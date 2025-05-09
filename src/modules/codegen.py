@@ -1,4 +1,5 @@
 import re
+import sys
 from playwright.sync_api import Playwright, sync_playwright, expect
 from imap_tools import MailboxLoginError
 from imap_tools.mailbox import MailBox, MailBoxUnencrypted
@@ -6,6 +7,28 @@ from imap_tools.query import AND
 import time
 import os
 from dotenv import load_dotenv
+import logging
+
+# Create a custom logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Create a handler for the terminal (StreamHandler)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+
+# Create a handler for the file (FileHandler)
+file_handler = logging.FileHandler("codegen.log")
+file_handler.setLevel(logging.INFO)
+
+# Define a common log format
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(formatter)
+file_handler.setFormatter(formatter)
+
+# Add handlers to the logger
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
 
 load_dotenv()
 
@@ -19,7 +42,7 @@ def extract_2fa_code(text: str) -> str | None:
 def get_2fa_code() -> str :
     try:
         with MailBoxUnencrypted(os.getenv('EMAIL_HOST', ''), port=143).login(os.getenv('EMAIL_USER', ''), os.getenv('EMAIL_PASS', ''), initial_folder='INBOX') as mailbox:
-            print("logged in")
+            logger.debug("logged in")
             timeout = time.time() + 120
             subject_filter="Your Ternium account verification code"
             while time.time() < timeout:
@@ -78,22 +101,18 @@ def run(playwright: Playwright) -> None:
         # Wait for the login-callback URL or proceed with login
         try:
             page.wait_for_url("**/login-callback**", timeout=5000)
-            print("Navigated to login callback. Continuing process.")
+            logger.debug("Navigated to login callback. Continuing process.")
         except Exception as e:
-            print("Did not navigate to login callback immediately. Proceeding with login.")
-            login_form = page.get_by_role("textbox", name="someone@example.com")
-            login_is_visible = login_form.evaluate("element => element.offsetParent !== null")
-            if login_is_visible:
-                page.get_by_role("textbox", name="someone@example.com").click()
-                page.get_by_role("textbox", name="someone@example.com").fill("francisco.saucedo@transportesorta.com")
-                page.get_by_role("button", name="Next").click()
-
-                # Wait for the callback URL again after entering email
+            logger.info("Did not navigate to login callback immediately. Proceeding with login.")
+            account_element = page.get_by_role("heading", name="Pick an account")
+            account_element_vis = account_element.evaluate("element => element.offsetParent !== null")
+            if account_element_vis:
+                page.locator("[data-test-id=\"francisco\\.saucedo\\@transportesorta\\.com\"]").click()
                 try:
                     page.wait_for_url("**/login-callback**", timeout=5000)
-                    print("Navigated to login callback after entering email. Continuing process.")
+                    logger.debug("Navigated to login callback after entering email. Continuing process.")
                 except Exception as e:
-                    print("Did not navigate to login callback after email. Proceeding with 2FA.")
+                    logger.info("Did not navigate to login callback after email. Proceeding with 2FA.")
                     page.get_by_role("textbox", name="Enter the code you received").click()
                     # Get 2FA code from email
                     code = get_2fa_code()
@@ -102,18 +121,28 @@ def run(playwright: Playwright) -> None:
                     page.wait_for_load_state('load')
                     context.storage_state(path="storage_state.json")
             else:
-                print("Login form is not visible. Skipping login.")
-        # if login_is_visible:
-        #     page.get_by_role("textbox", name="someone@example.com").click()
-        #     page.get_by_role("textbox", name="someone@example.com").fill("francisco.saucedo@transportesorta.com")
-        #     page.get_by_role("button", name="Next").click()
-        #     page.get_by_role("textbox", name="Enter the code you received").click()
-        #     # Get 2FA code from email
-        #     code = get_2fa_code()
-        #     page.get_by_role("textbox", name="Enter the code you received").fill(code)
-        #     page.get_by_role("button", name="Sign in").click()
-        #     page.wait_for_load_state('load')
-        #     context.storage_state(path="storage_state.json")
+                login_form = page.get_by_role("textbox", name="someone@example.com")
+                login_is_visible = login_form.evaluate("element => element.offsetParent !== null")
+                if login_is_visible:
+                    page.get_by_role("textbox", name="someone@example.com").click()
+                    page.get_by_role("textbox", name="someone@example.com").fill("francisco.saucedo@transportesorta.com")
+                    page.get_by_role("button", name="Next").click()
+
+                    # Wait for the callback URL again after entering email
+                    try:
+                        page.wait_for_url("**/login-callback**", timeout=5000)
+                        logger.debug("Navigated to login callback after entering email. Continuing process.")
+                    except Exception as e:
+                        logger.info("Did not navigate to login callback after email. Proceeding with 2FA.")
+                        page.get_by_role("textbox", name="Enter the code you received").click()
+                        # Get 2FA code from email
+                        code = get_2fa_code()
+                        page.get_by_role("textbox", name="Enter the code you received").fill(code)
+                        page.get_by_role("button", name="Sign in").click()
+                        page.wait_for_load_state('load')
+                        context.storage_state(path="storage_state.json")
+                else:
+                    logger.warning("Login form is not visible. Skipping login.")
         # Handle Pop-up
         icon = page.locator(".w-3 > .fill-current")
         icon_is_visible = icon.evaluate("element => element.offsetParent !== null")
@@ -121,93 +150,115 @@ def run(playwright: Playwright) -> None:
             page.locator(".w-3 > .fill-current > path").click()
         page.get_by_role("listitem").filter(has_text="Principal Ofertas de Viajes").get_by_role("img").click()
         page.wait_for_load_state('networkidle')
+        page.get_by_role("button", name="Origenes").click()
+        page.get_by_role("button", name="Largos Puebla").click()
+        page.get_by_text("Filtrar").click()
+        logger.debug("Filtering...")
         page.wait_for_selector("div", timeout=10000)
-
-
         page.wait_for_load_state('networkidle')
 
-        max_retries = 30
-        retry_interval = 1
-        posibles_fechas = None
+        initial_count = page.locator("div").count()
+        page.wait_for_function(
+            f"document.querySelectorAll('div').length !== {initial_count}"
+        )
+        page.wait_for_load_state('networkidle')  # Ensure network activity has settled
 
-        for _ in range(max_retries):
-            posibles_fechas = page.locator("div").filter(has_text=fecha_regex)
+        loop_controller = True
+        while loop_controller:
+            max_retries = 10
+            retry_interval = 1
+            posibles_fechas = None
 
-            if posibles_fechas.count() > 0:
-                fecha_texto = posibles_fechas.nth(0).inner_text()
+            for trie in range(max_retries):
+                posibles_fechas = page.locator("div").filter(has_text=fecha_regex)
 
-                # Extraer dia de fecha salida
-                dia = str(int(fecha_texto.split("/")[0]))
-                print(f"Date found: {fecha_texto}")
-                print(f"Extracted day: {dia}")
-                page.locator(".inputdate-class-position").first.click()
-                page.get_by_role("heading", name=dia, exact=True).click()
+                if posibles_fechas.count() > 0:
 
-                # Localizar y seleccionar el valor más alto del combobox de horas
-                hora_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(0)
-                if hora_combo.count() > 0:
-                    is_visible = hora_combo.evaluate("element => element.offsetParent !== null")
-                    print(f"Hours combo: {is_visible}")
-                    if is_visible:
-                        # Extraer los valores de las opciones
-                        hora_values = hora_combo.evaluate_all(
-                            "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                        )
-                        hora_values = [int(value) for value in hora_values if value.isdigit()]
-                        if hora_values:
-                            max_hora = max(hora_values)
-                            print(f"Max hours: {max_hora}")
-                            hora_combo.select_option(str(max_hora))
+                    oferta_texto = page.locator("div").filter(has_text=re.compile(r"^\d{8}$")).first.text_content()
+                    fecha_texto = posibles_fechas.nth(0).inner_text()
+
+                    # Extraer dia de fecha salida
+                    dia = str(int(fecha_texto.split("/")[0]))
+                    logger.info("-" * 50)
+                    logger.info(f"Ofert found: {oferta_texto}")
+                    logger.info(f"Date found: {fecha_texto}")
+                    logger.info(f"Extracted day: {dia}")
+                    page.locator(".inputdate-class-position").first.click()
+                    page.get_by_role("heading", name=dia, exact=True).click()
+
+                    # Localizar y seleccionar el valor más alto del combobox de horas
+                    hora_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(0)
+                    if hora_combo.count() > 0:
+                        is_visible = hora_combo.evaluate("element => element.offsetParent !== null")
+                        logger.info(f"Hours combo: {is_visible}")
+                        if is_visible:
+                            # Extraer los valores de las opciones
+                            hora_values = hora_combo.evaluate_all(
+                                "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
+                            )
+                            hora_values = [int(value) for value in hora_values if value.isdigit()]
+                            if hora_values:
+                                max_hora = max(hora_values)
+                                logger.info(f"Max hours: {max_hora}")
+                                hora_combo.select_option(str(max_hora))
+                            else:
+                                logger.debug("No values available in hours combobox")
                         else:
-                            print("No values available in hours combobox")
+                            logger.debug("Hours combobox not interactive")
                     else:
-                        print("Hours combobox not interactive")
-                else:
-                    print("Hours combobox not available")
-
-                # Localizar y seleccionar el valor más alto del combobox de minutos
-                minuto_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(1)
-                if minuto_combo.count() > 0:
-                    is_visible = minuto_combo.evaluate("element => element.offsetParent !== null")
-                    print(f"Minutes combobox: {is_visible}")
-                    if is_visible:
-                        minuto_values = minuto_combo.evaluate_all(
-                            "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                        )
-                        minuto_values = [int(value) for value in minuto_values if value.isdigit()]
-                        if minuto_values:
-                            max_minuto = max(minuto_values)
-                            print(f"Max Minutes: {max_minuto}")
-                            minuto_combo.select_option(str(max_minuto))
+                        logger.debug("Hours combobox not available")
+                    # Localizar y seleccionar el valor más alto del combobox de minutos
+                    minuto_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(1)
+                    if minuto_combo.count() > 0:
+                        is_visible = minuto_combo.evaluate("element => element.offsetParent !== null")
+                        logger.info(f"Minutes combobox: {is_visible}")
+                        if is_visible:
+                            minuto_values = minuto_combo.evaluate_all(
+                                "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
+                            )
+                            minuto_values = [int(value) for value in minuto_values if value.isdigit()]
+                            if minuto_values:
+                                max_minuto = max(minuto_values)
+                                logger.info(f"Max Minutes: {max_minuto}")
+                                minuto_combo.select_option(str(max_minuto))
+                            else:
+                                logger.debug("No values available in minutes combobox")
                         else:
-                            print("No values available in minutes combobox")
+                            logger.debug("Minutes combo not interactive")
                     else:
-                        print("Minutes combo not interactive")
-                else:
-                    print("Minutes combo not available")
-                input("Press enter to close browser...")
-                break
-            print("Waiting for data...")
-            time.sleep(retry_interval)
-        else:
-            print("No dates available")
-            page.get_by_text("Filtrar").click()
+                        logger.debug("Minutes combo not available")
 
-        # page.get_by_role("button", name="Origenes").click()
-        # page.get_by_role("button", name="Largos Puebla").click()
-        # while True:
-            # time.sleep(10)
-            # page.get_by_text("Filtrar").click()
-            # page.get_by_role("button", name="__/__/____").click()
-        # page.locator("div").filter(has_text=re.compile(r"^07/05\/2025 15:00 - 23:00$")).first.click()
-        # page.locator(".inputdate-class-position").first.click()
-        # page.get_by_role("heading", name="7", exact=True).click()
-        # page.locator("div").filter(has_text=re.compile(r"^2122$")).get_by_role("combobox").select_option("22")
-        # page.locator("div").filter(has_text=re.compile(r"^00153045$")).get_by_role("combobox").select_option("45")
-        # page.get_by_text("Cancelar").click()
-        # page.get_by_text("/05/2025 15:00 - 23:00").click()
+                    time.sleep(1)
+                    page.get_by_text("Aceptar").click()
+                    page.get_by_text("Confirmar").click()
+                    page.wait_for_selector("div:has-text('ACEPTAR')", timeout=10000)  # Waits for up to 10 seconds
+                    page.get_by_text("ACEPTAR").click()
+                    logger.info("Confirmed Offer...")
+                    page.get_by_text("Filtrar").click()
+                    logger.info("Finished flow")
+                    logger.info("-" * 50)
+                    # page.get_by_text("Cancelar").click()
+                    # input("Press enter to close browser...")
+                    # break
+                if trie == 1:
+                    logger.debug("Waiting for data")
+                time.sleep(retry_interval)
+            else:
+                logger.debug("No dates available")
+                page.get_by_text("Filtrar").click()
+                logger.debug("Running filter again...")
 
-        # ---------------------
+                # time.sleep(10)
+                # page.get_by_text("Filtrar").click()
+                # page.get_by_role("button", name="__/__/____").click()
+            # page.locator("div").filter(has_text=re.compile(r"^07/05\/2025 15:00 - 23:00$")).first.click()
+            # page.locator(".inputdate-class-position").first.click()
+            # page.get_by_role("heading", name="7", exact=True).click()
+            # page.locator("div").filter(has_text=re.compile(r"^2122$")).get_by_role("combobox").select_option("22")
+            # page.locator("div").filter(has_text=re.compile(r"^00153045$")).get_by_role("combobox").select_option("45")
+            # page.get_by_text("/05/2025 15:00 - 23:00").click()
+
+            # ---------------------
         context.close()
         browser.close()
     except Exception as e:
@@ -217,7 +268,7 @@ def run(playwright: Playwright) -> None:
         if 'context' in locals():
             context.close()
 
-
+ 
 def test_run():
     with sync_playwright() as playwright:
         run(playwright)
