@@ -176,9 +176,13 @@ def run(playwright: Playwright) -> None:
 
                     oferta_texto = page.locator("div").filter(has_text=re.compile(r"^\d{8}$")).first.text_content()
                     fecha_texto = posibles_fechas.nth(0).inner_text()
-
                     # Extraer dia de fecha salida
-                    dia = str(int(fecha_texto.split("/")[0]))
+                    hora_inicio, hora_fin = fecha_texto.split(' - ')[1].split(' ')
+                    if hora_fin < hora_inicio:
+                        dia = str(int(fecha_texto.split("/")[0])+1)
+                    else:
+                        dia = str(int(fecha_texto.split("/")[0]))
+
                     logger.info("-" * 50)
                     logger.info(f"Ofert found: {oferta_texto}")
                     logger.info(f"Date found: {fecha_texto}")
@@ -231,15 +235,16 @@ def run(playwright: Playwright) -> None:
                     time.sleep(1)
                     page.get_by_text("Aceptar").click()
                     page.get_by_text("Confirmar").click()
-                    page.wait_for_selector("div:has-text('ACEPTAR')", timeout=10000)  # Waits for up to 10 seconds
+                    # page.wait_for_selector("div:has-text('ACEPTAR')", timeout=10000)  # Waits for up to 10 seconds
+                    time.sleep(2)
                     page.get_by_text("ACEPTAR").click()
                     logger.info("Confirmed Offer...")
+                    # input("Press enter to close browser...")
+                    # break
                     page.get_by_text("Filtrar").click()
                     logger.info("Finished flow")
                     logger.info("-" * 50)
                     # page.get_by_text("Cancelar").click()
-                    # input("Press enter to close browser...")
-                    # break
                 if trie == 1:
                     logger.debug("Waiting for data")
                 time.sleep(retry_interval)
