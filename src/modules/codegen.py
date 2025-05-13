@@ -157,7 +157,7 @@ def select_max_combobox_option(combo, label=""):
 
 def run(playwright: Playwright) -> None:
     try:
-        browser = playwright.chromium.launch(headless=True)
+        browser = playwright.chromium.launch(headless=False)
         if not os.path.exists("storage_state.json"):
             context = browser.new_context()
         else:
@@ -236,10 +236,13 @@ def run(playwright: Playwright) -> None:
                 else:
                     logger.warning("Login form is not visible. Skipping login.")
         # Handle Pop-up
-        icon = page.locator(".w-3 > .fill-current")
-        icon_is_visible = icon.evaluate("element => element.offsetParent !== null")
-        if icon_is_visible:
-            page.locator(".w-3 > .fill-current > path").click()
+        try:
+            icon = page.locator(".w-3 > .fill-current")
+            icon_is_visible = icon.evaluate("element => element.offsetParent !== null")
+            if icon_is_visible:
+                page.locator(".w-3 > .fill-current > path").click()
+        except:
+            logger.debug("No popup found")
         page.get_by_role("listitem").filter(
             has_text="Principal Ofertas de Viajes"
         ).get_by_role("img").click()
