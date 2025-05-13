@@ -157,7 +157,7 @@ def select_max_combobox_option(combo, label=""):
 
 def run(playwright: Playwright) -> None:
     try:
-        browser = playwright.chromium.launch(headless=False)
+        browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(storage_state="storage_state.json")
         page = context.new_page()
         page.goto("https://weblogistica.ternium.com/login")
@@ -260,7 +260,6 @@ def run(playwright: Playwright) -> None:
         while loop_controller:
             max_retries = 10
             retry_interval = 1
-            posibles_fechas = None
 
             for trie in range(max_retries):
                 # Localizar todos los bloques que contengan oferta y fecha dentro
@@ -284,10 +283,6 @@ def run(playwright: Playwright) -> None:
                         if fecha_div.count() > 0:
                             fecha_texto = fecha_div.inner_text()
                             logger.info(f"Oferta: {oferta_texto}, Fecha: {fecha_texto}")
-                            fecha_partes = fecha_texto.split(" ")
-                            # fecha = fecha_partes[0]
-                            # hora_inicio = fecha_partes[1]
-                            # hora_fin = fecha_partes[3]
                             match = re.match(
                                 r"(\d{2}/\d{2}/\d{4}) (\d{2}:\d{2}) - (\d{2}:\d{2})",
                                 fecha_texto,
@@ -341,47 +336,6 @@ def run(playwright: Playwright) -> None:
                             logger.info(f"Date found: {fecha_texto}")
                             logger.info(f"Extracted day: {dia_obj.dia}")
 
-                            # Localizar y seleccionar el valor más alto del combobox de horas
-                            # hora_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(0)
-                            # if hora_combo.count() > 0:
-                            #     is_visible = hora_combo.evaluate("element => element.offsetParent !== null")
-                            #     logger.info(f"Hours combo: {is_visible}")
-                            #     if is_visible:
-                            #         # Extraer los valores de las opciones
-                            #         hora_values = hora_combo.evaluate_all(
-                            #             "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                            #         )
-                            #         hora_values = [int(value) for value in hora_values if value.isdigit()]
-                            #         if hora_values:
-                            #             max_hora = max(hora_values)
-                            #             logger.info(f"Max hours: {max_hora}")
-                            #             hora_combo.select_option(str(max_hora))
-                            #         else:
-                            #             logger.debug("No values available in hours combobox")
-                            #     else:
-                            #         logger.debug("Hours combobox not interactive")
-                            # else:
-                            #     logger.debug("Hours combobox not available")
-                            # # Localizar y seleccionar el valor más alto del combobox de minutos
-                            # minuto_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(1)
-                            # if minuto_combo.count() > 0:
-                            #     is_visible = minuto_combo.evaluate("element => element.offsetParent !== null")
-                            #     logger.info(f"Minutes combobox: {is_visible}")
-                            #     if is_visible:
-                            #         minuto_values = minuto_combo.evaluate_all(
-                            #             "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                            #         )
-                            #         minuto_values = [int(value) for value in minuto_values if value.isdigit()]
-                            #         if minuto_values:
-                            #             max_minuto = max(minuto_values)
-                            #             logger.info(f"Max Minutes: {max_minuto}")
-                            #             minuto_combo.select_option(str(max_minuto))
-                            #         else:
-                            #             logger.debug("No values available in minutes combobox")
-                            #     else:
-                            #         logger.debug("Minutes combo not interactive")
-                            # else:
-                            #     logger.debug("Minutes combo not available")
                             hora_combo = page.get_by_role("combobox").nth(0)
                             select_max_combobox_option(hora_combo, label="Hora")
 
@@ -391,7 +345,6 @@ def run(playwright: Playwright) -> None:
                             page.get_by_text("Aceptar").click()
                             time.sleep(1)
                             page.get_by_text("Confirmar").click()
-                            # page.wait_for_selector("div:has-text('ACEPTAR')", timeout=10000)  # Waits for up to 10 seconds
                             time.sleep(2)
                             page.get_by_text("ACEPTAR").click()
                             logger.info("Confirmed Offer...")
@@ -402,81 +355,6 @@ def run(playwright: Playwright) -> None:
                             # page.get_by_text("Cancelar").click()
                     except:
                         continue
-                # posibles_fechas = page.locator("div").filter(has_text=fecha_regex)
-                #
-                # if posibles_fechas.count() > 0:
-                #
-                #     oferta_texto = page.locator("div").filter(has_text=re.compile(r"^\d{8}$")).first.text_content()
-                #     fecha_texto = posibles_fechas.nth(0).inner_text()
-                #     # Extraer dia de fecha salida
-                #     hora_inicio, hora_fin = fecha_texto.split(' - ')[1].split(' ')
-                #     if hora_fin < hora_inicio:
-                #         dia = str(int(fecha_texto.split("/")[0])+1)
-                #     else:
-                #         dia = str(int(fecha_texto.split("/")[0]))
-                #
-                #     logger.info("-" * 50)
-                #     logger.info(f"Ofert found: {oferta_texto}")
-                #     logger.info(f"Date found: {fecha_texto}")
-                #     logger.info(f"Extracted day: {dia}")
-                #     page.locator(".inputdate-class-position").first.click()
-                #     page.get_by_role("heading", name=dia, exact=True).click()
-                #
-                #     # Localizar y seleccionar el valor más alto del combobox de horas
-                #     hora_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(0)
-                #     if hora_combo.count() > 0:
-                #         is_visible = hora_combo.evaluate("element => element.offsetParent !== null")
-                #         logger.info(f"Hours combo: {is_visible}")
-                #         if is_visible:
-                #             # Extraer los valores de las opciones
-                #             hora_values = hora_combo.evaluate_all(
-                #                 "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                #             )
-                #             hora_values = [int(value) for value in hora_values if value.isdigit()]
-                #             if hora_values:
-                #                 max_hora = max(hora_values)
-                #                 logger.info(f"Max hours: {max_hora}")
-                #                 hora_combo.select_option(str(max_hora))
-                #             else:
-                #                 logger.debug("No values available in hours combobox")
-                #         else:
-                #             logger.debug("Hours combobox not interactive")
-                #     else:
-                #         logger.debug("Hours combobox not available")
-                #     # Localizar y seleccionar el valor más alto del combobox de minutos
-                #     minuto_combo = page.locator("div").filter(has_text=re.compile(r"^\d{4,}$")).get_by_role("combobox").nth(1)
-                #     if minuto_combo.count() > 0:
-                #         is_visible = minuto_combo.evaluate("element => element.offsetParent !== null")
-                #         logger.info(f"Minutes combobox: {is_visible}")
-                #         if is_visible:
-                #             minuto_values = minuto_combo.evaluate_all(
-                #                 "nodes => Array.from(nodes[0].options || []).map(o => o.value.trim()).filter(v => v)"
-                #             )
-                #             minuto_values = [int(value) for value in minuto_values if value.isdigit()]
-                #             if minuto_values:
-                #                 max_minuto = max(minuto_values)
-                #                 logger.info(f"Max Minutes: {max_minuto}")
-                #                 minuto_combo.select_option(str(max_minuto))
-                #             else:
-                #                 logger.debug("No values available in minutes combobox")
-                #         else:
-                #             logger.debug("Minutes combo not interactive")
-                #     else:
-                #         logger.debug("Minutes combo not available")
-                #
-                #     time.sleep(1)
-                #     page.get_by_text("Aceptar").click()
-                #     page.get_by_text("Confirmar").click()
-                #     # page.wait_for_selector("div:has-text('ACEPTAR')", timeout=10000)  # Waits for up to 10 seconds
-                #     time.sleep(2)
-                #     page.get_by_text("ACEPTAR").click()
-                #     logger.info("Confirmed Offer...")
-                #     # input("Press enter to close browser...")
-                #     # break
-                #     page.get_by_text("Filtrar").click()
-                #     logger.info("Finished flow")
-                #     logger.info("-" * 50)
-                # page.get_by_text("Cancelar").click()
                 if trie == 1:
                     logger.debug("Waiting for data")
                 time.sleep(retry_interval)
@@ -485,17 +363,6 @@ def run(playwright: Playwright) -> None:
                 page.get_by_text("Filtrar").click()
                 logger.debug("Running filter again...")
 
-                # time.sleep(10)
-                # page.get_by_text("Filtrar").click()
-                # page.get_by_role("button", name="__/__/____").click()
-            # page.locator("div").filter(has_text=re.compile(r"^07/05\/2025 15:00 - 23:00$")).first.click()
-            # page.locator(".inputdate-class-position").first.click()
-            # page.get_by_role("heading", name="7", exact=True).click()
-            # page.locator("div").filter(has_text=re.compile(r"^2122$")).get_by_role("combobox").select_option("22")
-            # page.locator("div").filter(has_text=re.compile(r"^00153045$")).get_by_role("combobox").select_option("45")
-            # page.get_by_text("/05/2025 15:00 - 23:00").click()
-
-            # ---------------------
         context.close()
         browser.close()
     except Exception as e:

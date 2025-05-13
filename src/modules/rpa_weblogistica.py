@@ -108,7 +108,7 @@ def select_max_in_combobox(combo):
 
 def run(playwright: Playwright) -> None:
     try:
-        browser = playwright.chromium.launch(headless=False)
+        browser = playwright.chromium.launch(headless=True)
         if not os.path.exists("storage_state.json"):
             context = browser.new_context()
         else:
@@ -177,6 +177,7 @@ def run(playwright: Playwright) -> None:
                         # ).click()
                         # Get 2FA code from email
                         code = get_2fa_code()
+                        logger.debug(code)
                         page.get_by_role(
                             "textbox", name="Enter the code you received"
                         ).fill(code)
