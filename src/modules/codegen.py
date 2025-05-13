@@ -174,11 +174,7 @@ def run(playwright: Playwright) -> None:
             logger.info(
                 "Did not navigate to login callback immediately. Proceeding with login."
             )
-            account_element = page.get_by_role("heading", name="Pick an account")
-            account_element_vis = account_element.evaluate(
-                "element => element.offsetParent !== null"
-            )
-            if account_element_vis:
+            try:
                 page.locator(
                     '[data-test-id="francisco\\.saucedo\\@transportesorta\\.com"]'
                 ).click()
@@ -196,13 +192,14 @@ def run(playwright: Playwright) -> None:
                     ).click()
                     # Get 2FA code from email
                     code = get_2fa_code()
+                    logger.info(f"2FA response: {code}")
                     page.get_by_role(
                         "textbox", name="Enter the code you received"
                     ).fill(code)
                     page.get_by_role("button", name="Sign in").click()
                     page.wait_for_load_state("load")
                     context.storage_state(path="storage_state.json")
-            else:
+            except Exception as e:
                 login_form = page.get_by_role("textbox", name="someone@example.com")
                 login_is_visible = login_form.evaluate(
                     "element => element.offsetParent !== null"
@@ -224,11 +221,12 @@ def run(playwright: Playwright) -> None:
                         logger.info(
                             "Did not navigate to login callback after email. Proceeding with 2FA."
                         )
-                        page.get_by_role(
-                            "textbox", name="Enter the code you received"
-                        ).click()
+                        # page.get_by_role(
+                        #     "textbox", name="Enter the code you received"
+                        # ).click()
                         # Get 2FA code from email
                         code = get_2fa_code()
+                        logger.debug(code)
                         page.get_by_role(
                             "textbox", name="Enter the code you received"
                         ).fill(code)
