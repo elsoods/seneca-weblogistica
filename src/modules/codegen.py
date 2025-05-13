@@ -158,7 +158,10 @@ def select_max_combobox_option(combo, label=""):
 def run(playwright: Playwright) -> None:
     try:
         browser = playwright.chromium.launch(headless=True)
-        context = browser.new_context(storage_state="storage_state.json")
+        if not os.path.exists("storage_state.json"):
+            context = browser.new_context()
+        else:
+            context = browser.new_context(storage_state="storage_state.json")
         page = context.new_page()
         page.goto("https://weblogistica.ternium.com/login")
         page.get_by_role("button", name="Ingresar con Azure").click()
