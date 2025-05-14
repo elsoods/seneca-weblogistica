@@ -171,12 +171,12 @@ def run(playwright: Playwright) -> None:
         if not os.path.exists(os.path.join(base_dir, "storage_state.json")):
             logger.debug("storage_state doesnt exists")
             context = browser.new_context(
-                record_video_dir=os.path.join(base_dir, "recordings/")
+                record_video_dir=os.path.join(base_dir, "recordings")
             )
         else:
             context = browser.new_context(
                 storage_state=os.path.join(base_dir, "storage_state.json"),
-                record_video_dir=os.path.join(base_dir, "recordings/"),
+                record_video_dir=os.path.join(base_dir, "recordings"),
             )
         page = context.new_page()
         page.goto("https://weblogistica.ternium.com/login")
@@ -369,12 +369,20 @@ def run(playwright: Playwright) -> None:
                             page.get_by_text("Confirmar").click()
                             time.sleep(2)
                             page.get_by_text("ACEPTAR").click()
-                            logger.info("Confirmed Offer...")
-                            page.get_by_text("Filtrar").click()
-                            logger.info("Finished flow")
+                            logger.info("Confirmed Offer.")
+                            try:
+                                logger.debug(
+                                    "Waiting for 'Filtrar' to be available again..."
+                                )
+                                page.get_by_text("Filtrar", exact=True).wait_for(
+                                    state="visible", timeout=10000
+                                )
+                                page.get_by_text("Filtrar", exact=True).click()
+                                logger.info("Finished flow, refreshing filter...")
+                            except Exception as e:
+                                logger.exception("Could not click 'Filtrar'")
                             # input("Press enter to close browser...")
                             # break
-                            # page.get_by_text("Cancelar").click()
                     except:
                         continue
                 if trie == 1:

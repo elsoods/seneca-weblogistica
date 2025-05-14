@@ -12,3 +12,5 @@ wheels/
 storage_state.json
 .env
 codegen.log
+
+recordings/
