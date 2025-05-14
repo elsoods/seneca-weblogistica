@@ -283,7 +283,7 @@ def run(playwright: Playwright) -> None:
         # Handle Pop-up
         icon_locator = page.locator(".w-3 > .fill-current")
         try:
-            icon_locator.wait_for(state="visible", timeout=10000)
+            icon_locator.wait_for(state="visible", timeout=30000)
             if icon_locator.count() > 0:
                 icon_is_visible = icon_locator.evaluate(
                     "element => element.offsetParent !== null"
