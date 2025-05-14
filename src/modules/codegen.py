@@ -183,6 +183,10 @@ def run(playwright: Playwright) -> None:
             "https://weblogistica.ternium.com/login", wait_until="load", timeout=20000
         )
         # page.wait_for_selector('button:has-text("Ingresar con Azure")', timeout=10000)
+        page.wait_for_selector(
+            'button:has-text("Ingresar con Azure")', state="visible", timeout=15000
+        )
+        page.wait_for_selector(".modal-overlay", state="detached", timeout=15000)
         page.get_by_role("button", name="Ingresar con Azure").click(timeout=10000)
         # Wait for the login-callback URL or proceed with login
         try:
@@ -193,6 +197,9 @@ def run(playwright: Playwright) -> None:
                 "Did not navigate to login callback immediately. Proceeding with login."
             )
             try:
+                page.locator(
+                    '[data-test-id="francisco\\.saucedo\\@transportesorta\\.com"]'
+                ).wait_for(state="visible", timeout=10000)
                 page.locator(
                     '[data-test-id="francisco\\.saucedo\\@transportesorta\\.com"]'
                 ).click()
@@ -207,6 +214,9 @@ def run(playwright: Playwright) -> None:
                     )
                     page.get_by_role(
                         "textbox", name="Enter the code you received"
+                    ).wait_for(state="visible", timeout=10000)
+                    page.get_by_role(
+                        "textbox", name="Enter the code you received"
                     ).click()
                     # Get 2FA code from email
                     code = get_2fa_code()
@@ -214,6 +224,9 @@ def run(playwright: Playwright) -> None:
                     page.get_by_role(
                         "textbox", name="Enter the code you received"
                     ).fill(code)
+                    page.get_by_role("button", name="Sign in").wait_for(
+                        state="visible", timeout=10000
+                    )
                     page.get_by_role("button", name="Sign in").click()
                     page.wait_for_load_state("load")
                     context.storage_state(path="storage_state.json")
@@ -229,6 +242,9 @@ def run(playwright: Playwright) -> None:
                     page.get_by_role("textbox", name="someone@example.com").click()
                     page.get_by_role("textbox", name="someone@example.com").fill(
                         "francisco.saucedo@transportesorta.com"
+                    )
+                    page.get_by_role("button", name="Next").wait_for(
+                        state="visible", timeout=10000
                     )
                     page.get_by_role("button", name="Next").click(timeout=10000)
 
@@ -254,6 +270,9 @@ def run(playwright: Playwright) -> None:
                         page.get_by_role(
                             "textbox", name="Enter the code you received"
                         ).fill(code)
+                        page.get_by_role("button", name="Sign in").wait_for(
+                            state="visible", timeout=10000
+                        )
                         page.get_by_role("button", name="Sign in").click(timeout=10000)
                         page.wait_for_load_state("load")
                         context.storage_state(
@@ -275,6 +294,9 @@ def run(playwright: Playwright) -> None:
             logger.debug(f"No popup found | {e}")
         # Wait for any modal overlays to disappear before clicking
         page.wait_for_selector(".modal-overlay", state="detached", timeout=15000)
+        page.evaluate(
+            "document.querySelectorAll('.modal-overlay').forEach(e => e.remove())"
+        )
         listitem_img = (
             page.get_by_role("listitem")
             .filter(has_text="Principal Ofertas de Viajes")
