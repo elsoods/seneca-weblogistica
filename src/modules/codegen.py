@@ -179,9 +179,11 @@ def run(playwright: Playwright) -> None:
                 record_video_dir=os.path.join(base_dir, "recordings"),
             )
         page = context.new_page()
-        page.goto("https://weblogistica.ternium.com/login")
-        page.get_by_role("button", name="Ingresar con Azure").click()
-
+        page.goto(
+            "https://weblogistica.ternium.com/login", wait_until="load", timeout=20000
+        )
+        # page.wait_for_selector('button:has-text("Ingresar con Azure")', timeout=10000)
+        page.get_by_role("button", name="Ingresar con Azure").click(timeout=10000)
         # Wait for the login-callback URL or proceed with login
         try:
             page.wait_for_url("**/login-callback**", timeout=5000)
@@ -221,11 +223,14 @@ def run(playwright: Playwright) -> None:
                     "element => element.offsetParent !== null"
                 )
                 if login_is_visible:
+                    page.get_by_role("textbox", name="someone@example.com").wait_for(
+                        state="visible", timeout=10000
+                    )
                     page.get_by_role("textbox", name="someone@example.com").click()
                     page.get_by_role("textbox", name="someone@example.com").fill(
                         "francisco.saucedo@transportesorta.com"
                     )
-                    page.get_by_role("button", name="Next").click()
+                    page.get_by_role("button", name="Next").click(timeout=10000)
 
                     # Wait for the callback URL again after entering email
                     try:
@@ -245,8 +250,11 @@ def run(playwright: Playwright) -> None:
                         logger.debug(code)
                         page.get_by_role(
                             "textbox", name="Enter the code you received"
+                        ).wait_for(state="visible", timeout=10000)
+                        page.get_by_role(
+                            "textbox", name="Enter the code you received"
                         ).fill(code)
-                        page.get_by_role("button", name="Sign in").click()
+                        page.get_by_role("button", name="Sign in").click(timeout=10000)
                         page.wait_for_load_state("load")
                         context.storage_state(
                             path=os.path.join(base_dir, "storage_state.json")
@@ -254,20 +262,38 @@ def run(playwright: Playwright) -> None:
                 else:
                     logger.warning("Login form is not visible. Skipping login.")
         # Handle Pop-up
+        icon_locator = page.locator(".w-3 > .fill-current")
         try:
-            icon = page.locator(".w-3 > .fill-current")
-            icon_is_visible = icon.evaluate("element => element.offsetParent !== null")
-            if icon_is_visible:
-                page.locator(".w-3 > .fill-current > path").click()
-        except:
-            logger.debug("No popup found")
-        page.get_by_role("listitem").filter(
-            has_text="Principal Ofertas de Viajes"
-        ).get_by_role("img").click()
+            icon_locator.wait_for(state="visible", timeout=10000)
+            if icon_locator.count() > 0:
+                icon_is_visible = icon_locator.evaluate(
+                    "element => element.offsetParent !== null"
+                )
+                if icon_is_visible:
+                    icon_locator.click(timeout=5000)
+        except Exception as e:
+            logger.debug(f"No popup found | {e}")
+        # Wait for any modal overlays to disappear before clicking
+        page.wait_for_selector(".modal-overlay", state="detached", timeout=15000)
+        listitem_img = (
+            page.get_by_role("listitem")
+            .filter(has_text="Principal Ofertas de Viajes")
+            .get_by_role("img")
+        )
+        listitem_img.wait_for(state="visible", timeout=10000)
+        listitem_img.click(timeout=10000)
         page.wait_for_load_state("networkidle")
-        page.get_by_role("button", name="Origenes").click()
-        page.get_by_role("button", name="Largos Puebla").click()
-        page.get_by_text("Filtrar").click()
+        origenes_btn = page.get_by_role("button", name="Origenes")
+        origenes_btn.wait_for(state="visible", timeout=10000)
+        origenes_btn.click()
+
+        largos_btn = page.get_by_role("button", name="Largos Puebla")
+        largos_btn.wait_for(state="visible", timeout=10000)
+        largos_btn.click()
+
+        filtrar_btn = page.get_by_text("Filtrar")
+        filtrar_btn.wait_for(state="visible", timeout=10000)
+        filtrar_btn.click()
         logger.debug("Filtering...")
         page.wait_for_selector("div", timeout=10000)
         page.wait_for_load_state("networkidle")
@@ -318,6 +344,9 @@ def run(playwright: Playwright) -> None:
                             logger.info("-" * 50)
                             input_button = bloque.locator(".inputdate-class-position")
                             if input_button.count() > 0:
+                                input_button.first.wait_for(
+                                    state="visible", timeout=10000
+                                )
                                 input_button.first.click()
                             else:
                                 logger.warning(
@@ -337,6 +366,7 @@ def run(playwright: Playwright) -> None:
                             heading = page.get_by_role(
                                 "heading", name=dia_obj.dia, exact=True
                             )
+                            heading.wait_for(state="visible", timeout=10000)
                             try:
                                 heading.click()
                             except Exception as e:
@@ -349,6 +379,7 @@ def run(playwright: Playwright) -> None:
                                     heading = page.get_by_role(
                                         "heading", name=dia_alt, exact=True
                                     )
+                                    heading.wait_for(state="visible", timeout=10000)
                                     heading.click()
                                 else:
                                     logger.info("Can't select day. Skipping offer...")
@@ -359,16 +390,24 @@ def run(playwright: Playwright) -> None:
                             logger.info(f"Extracted day: {dia_obj.dia}")
 
                             hora_combo = page.get_by_role("combobox").nth(0)
+                            hora_combo.wait_for(state="visible", timeout=10000)
                             select_max_combobox_option(hora_combo, label="Hora")
 
                             minuto_combo = page.get_by_role("combobox").nth(1)
+                            minuto_combo.wait_for(state="visible", timeout=10000)
                             select_max_combobox_option(minuto_combo, label="Minuto")
 
-                            page.get_by_text("Aceptar").click()
+                            aceptar_btn = page.get_by_text("Aceptar")
+                            aceptar_btn.wait_for(state="visible", timeout=10000)
+                            aceptar_btn.click()
                             time.sleep(1)
-                            page.get_by_text("Confirmar").click()
+                            confirmar_btn = page.get_by_text("Confirmar")
+                            confirmar_btn.wait_for(state="visible", timeout=10000)
+                            confirmar_btn.click()
                             time.sleep(2)
-                            page.get_by_text("ACEPTAR").click()
+                            aceptar_final_btn = page.get_by_text("ACEPTAR")
+                            aceptar_final_btn.wait_for(state="visible", timeout=10000)
+                            aceptar_final_btn.click()
                             logger.info("Confirmed Offer.")
                             try:
                                 logger.debug(
@@ -390,7 +429,9 @@ def run(playwright: Playwright) -> None:
                 time.sleep(retry_interval)
             else:
                 logger.debug("No dates available")
-                page.get_by_text("Filtrar").click()
+                filtrar_btn = page.get_by_text("Filtrar")
+                filtrar_btn.wait_for(state="visible", timeout=10000)
+                filtrar_btn.click()
                 logger.debug("Running filter again...")
 
         context.close()
