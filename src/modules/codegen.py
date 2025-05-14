@@ -33,6 +33,12 @@ logger.addHandler(file_handler)
 
 load_dotenv()
 
+# Get the directory of the current file (e.g., modules/)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Go one level up (e.g., project root)
+base_dir = os.path.abspath(os.path.join(current_dir, os.pardir, os.pardir))
+
 
 @dataclass
 class Dia:
@@ -114,13 +120,16 @@ def select_max_in_combobox(combo):
 
 def select_max_combobox_option(combo, label=""):
     try:
-        combo.wait_for(timeout=3000)
+        # Esperar a que esté en el DOM y sea visible
+        combo.wait_for(state="attached", timeout=5000)
+        combo.wait_for(state="visible", timeout=5000)
+
         is_visible = combo.evaluate("el => el.offsetParent !== null")
         logger.info(f"{label} combo visible: {is_visible}")
         if not is_visible:
             return False
 
-        # Obtener todas las opciones con estado habilitado
+        # Obtener todas las opciones
         values = combo.evaluate(
             """
             el => Array.from(el.options || []).map(o => ({
@@ -140,7 +149,6 @@ def select_max_combobox_option(combo, label=""):
         if valid_values:
             max_value = max(valid_values)
             logger.info(f"{label} max value: {max_value}")
-            # Busca el string exacto en el HTML para evitar errores de "no se encontró"
             exact_option = next(
                 (v["value"] for v in values if int(v["value"]) == max_value),
                 str(max_value),
@@ -150,6 +158,7 @@ def select_max_combobox_option(combo, label=""):
         else:
             logger.warning(f"{label} combobox has no enabled numeric options.")
             return False
+
     except Exception as e:
         logger.exception(f"Error selecting from {label} combo: {e}")
         return False
@@ -157,11 +166,18 @@ def select_max_combobox_option(combo, label=""):
 
 def run(playwright: Playwright) -> None:
     try:
-        browser = playwright.chromium.launch(headless=False)
-        if not os.path.exists("storage_state.json"):
-            context = browser.new_context()
+        browser = playwright.chromium.launch(headless=True)
+        # if not os.path.exists("storage_state.json"):
+        if not os.path.exists(os.path.join(base_dir, "storage_state.json")):
+            logger.debug("storage_state doesnt exists")
+            context = browser.new_context(
+                record_video_dir=os.path.join(base_dir, "recordings/")
+            )
         else:
-            context = browser.new_context(storage_state="storage_state.json")
+            context = browser.new_context(
+                storage_state=os.path.join(base_dir, "storage_state.json"),
+                record_video_dir=os.path.join(base_dir, "recordings/"),
+            )
         page = context.new_page()
         page.goto("https://weblogistica.ternium.com/login")
         page.get_by_role("button", name="Ingresar con Azure").click()
@@ -232,7 +248,9 @@ def run(playwright: Playwright) -> None:
                         ).fill(code)
                         page.get_by_role("button", name="Sign in").click()
                         page.wait_for_load_state("load")
-                        context.storage_state(path="storage_state.json")
+                        context.storage_state(
+                            path=os.path.join(base_dir, "storage_state.json")
+                        )
                 else:
                     logger.warning("Login form is not visible. Skipping login.")
         # Handle Pop-up
