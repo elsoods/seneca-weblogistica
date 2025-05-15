@@ -79,7 +79,7 @@ def get_2fa_code() -> str:
         return f"Error al obtener el código 2FA: {e}"
 
 
-fecha_regex = re.compile(r"^\d{2}/\d{2}/\d{4} \d{2}:\d{2} - \d{2}:\d{2}$")
+fecha_regex = re.compile(r"^\d{2}/\d{2}/\d{4} \d{2}:\d{2}(?: - \d{2}:\d{2})?$")
 
 
 def select_max_in_combobox(combo):
@@ -324,7 +324,7 @@ def run(playwright: Playwright) -> None:
         page.wait_for_function(
             f"document.querySelectorAll('div').length !== {initial_count}"
         )
-        page.wait_for_load_state("networkidle")  # Ensure network activity has settled
+        # page.wait_for_load_state("networkidle")  # Ensure network activity has settled
 
         loop_controller = True
         while loop_controller:
@@ -333,12 +333,26 @@ def run(playwright: Playwright) -> None:
 
             for trie in range(max_retries):
                 # Localizar todos los bloques que contengan oferta y fecha dentro
+                page.wait_for_selector(
+                    ".modal-overlay", state="detached", timeout=15000
+                )
+                page.evaluate(
+                    """() => {
+                    // Force browser to recalculate layout and repaint
+                    document.body.style.zoom = "99%";
+                    setTimeout(() => { document.body.style.zoom = "100%"; }, 10);
+                }"""
+                )
+                page.wait_for_load_state("networkidle")
+                page.wait_for_selector("div", timeout=7000)
                 bloques = (
                     page.locator("div")
                     .filter(has_text=re.compile(r"\d{8}"))
                     .locator("..")
                 )  # padre inmediato del div con el ID
                 total_bloques = bloques.count()
+                if trie == 0:
+                    logger.debug(f"Total bloques encontrados: {total_bloques}")
 
                 for i in range(total_bloques):
                     bloque = bloques.nth(i)
@@ -348,15 +362,33 @@ def run(playwright: Playwright) -> None:
                         oferta_texto = bloque.locator(
                             "div", has_text=re.compile(r"^\d{8}$")
                         ).first.text_content()
+                        logger.debug(f"Found offer ID: {oferta_texto}")
                         # Buscar una fecha dentro de ese mismo bloque
-                        fecha_div = bloque.locator("div", has_text=fecha_regex).first
+                        fecha_divs = bloque.locator("div", has_text=fecha_regex).all()
+
+                        if len(fecha_divs) < 2:
+                            logger.warning(
+                                f"Offer {oferta_texto}: Not enough date fields found (found {len(fecha_divs)}, need at least 2)"
+                            )
+                            continue
+
+                        # Get the second date (index 1)
+                        fecha_div = fecha_divs[1]  # This gives us the second date
+                        fecha_texto = fecha_div.inner_text()
+                        logger.info(
+                            f"Oferta: {oferta_texto}, Fecha: {fecha_texto} (second date field)"
+                        )
+                        match = re.match(fecha_regex, fecha_texto)
+                        if not match:
+                            logger.warning(
+                                f"Formato inesperado en fecha: '{fecha_texto}'"
+                            )
+                            continue  # pasa al siguiente bloque si la fecha está mal formada
+                        logger.debug(f"Found date: {fecha_div.inner_text()}")
                         if fecha_div.count() > 0:
                             fecha_texto = fecha_div.inner_text()
                             logger.info(f"Oferta: {oferta_texto}, Fecha: {fecha_texto}")
-                            match = re.match(
-                                r"(\d{2}/\d{2}/\d{4}) (\d{2}:\d{2}) - (\d{2}:\d{2})",
-                                fecha_texto,
-                            )
+                            match = re.match(fecha_regex, fecha_texto)
                             if not match:
                                 logger.warning(
                                     f"Formato inesperado en fecha: '{fecha_texto}'"
@@ -375,7 +407,26 @@ def run(playwright: Playwright) -> None:
                                     "No se encontró inputdate en el bloque correspondiente"
                                 )
 
-                            fecha, hora_inicio, hora_fin = match.groups()
+                            parts = fecha_texto.split(" ")
+                            fecha = parts[0]
+                            hora_inicio = parts[1]
+
+                            # Handle both single time and time range formats
+                            if " - " in fecha_texto:
+                                hora_fin = parts[3]
+                                dia_obj = Dia(
+                                    (
+                                        str(int(fecha.split("/")[0]))
+                                        if hora_fin < hora_inicio
+                                        else str(int(fecha.split("/")[0]))
+                                    ),
+                                    hora_fin
+                                    < hora_inicio,  # Added day if end time < start time
+                                )
+                            else:
+                                # For single time format, no day adjustment needed
+                                dia_obj = Dia(str(int(fecha.split("/")[0])), False)
+                                hora_fin = hora_inicio
                             if hora_fin < hora_inicio:
                                 dia_obj = Dia(
                                     str(int(fecha_texto.split("/")[0]) + 1), True
@@ -427,9 +478,28 @@ def run(playwright: Playwright) -> None:
                             confirmar_btn.wait_for(state="visible", timeout=10000)
                             confirmar_btn.click()
                             time.sleep(2)
-                            aceptar_final_btn = page.get_by_text("ACEPTAR")
-                            aceptar_final_btn.wait_for(state="visible", timeout=10000)
-                            aceptar_final_btn.click()
+                            try:
+                                # Try first with exact case matching
+                                aceptar_final_btn = page.get_by_text(
+                                    "ACEPTAR", exact=True
+                                )
+                                if aceptar_final_btn.count() == 0:
+                                    # Try with case-insensitive matching if exact match fails
+                                    aceptar_final_btn = page.get_by_text(
+                                        re.compile("ACEPTAR", re.IGNORECASE)
+                                    )
+
+                                aceptar_final_btn.wait_for(
+                                    state="visible", timeout=10000
+                                )
+                                logger.debug("Found final ACEPTAR button, clicking...")
+                                aceptar_final_btn.click()
+                                time.sleep(1)  # Wait for click to complete
+                                logger.info("Confirmed Offer.")
+                            except Exception as e:
+                                logger.error(
+                                    f"Failed to click final ACEPTAR button: {e}"
+                                )
                             logger.info("Confirmed Offer.")
                             try:
                                 logger.debug(
@@ -444,9 +514,10 @@ def run(playwright: Playwright) -> None:
                                 logger.exception("Could not click 'Filtrar'")
                             # input("Press enter to close browser...")
                             # break
-                    except:
+                    except Exception as e:
+                        logger.warning(f"Error al procesar bloque {i}: {e}")
                         continue
-                if trie == 1:
+                if trie == 0:
                     logger.debug("Waiting for data")
                 time.sleep(retry_interval)
             else:
