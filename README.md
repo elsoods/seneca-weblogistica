@@ -9,6 +9,20 @@ Automatización diseñada para revisar y gestionar el sitio web de asignación d
 
 ## Instalación
 
+### 0. Inicializacion de ambiente virtual
+
+Inicialize un entorno virtual:
+
+```bash
+python3 -m venv .venv
+```
+
+Active el entorno virtual:
+
+```bash
+source .venv/bin/activate
+```
+
 ### 1. Instalación de dependencias
 
 Ejecute el siguiente comando para instalar las dependencias necesarias:
@@ -32,10 +46,10 @@ Cree un archivo de configuración para el servicio en `/etc/systemd/system/weblo
 ```ini
 [Unit]
 Description=Servicio de Automatización Weblogística
-After=network.target
+After=multi-user.target
 
 [Service]
-ExecStart=/usr/bin/python3 /ruta/a/src/main.py
+ExecStart=/ruta/a/.venv/bin/python /ruta/a/src/main.py
 WorkingDirectory=/ruta/a/
 Restart=always
 User=usuario
