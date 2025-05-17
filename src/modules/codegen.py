@@ -305,18 +305,18 @@ def run(playwright: Playwright) -> None:
         listitem_img.wait_for(state="visible", timeout=10000)
         listitem_img.click(timeout=10000)
         page.wait_for_load_state("networkidle")
-        # origenes_btn = page.get_by_role("button", name="Origenes")
-        # origenes_btn.wait_for(state="visible", timeout=10000)
-        # origenes_btn.click()
-        #
-        # largos_btn = page.get_by_role("button", name="Largos Puebla")
-        # largos_btn.wait_for(state="visible", timeout=10000)
-        # largos_btn.click()
-        #
-        # filtrar_btn = page.get_by_text("Filtrar")
-        # filtrar_btn.wait_for(state="visible", timeout=10000)
-        # filtrar_btn.click()
-        # logger.debug("Filtering...")
+        origenes_btn = page.get_by_role("button", name="Origenes")
+        origenes_btn.wait_for(state="visible", timeout=10000)
+        origenes_btn.click()
+
+        largos_btn = page.get_by_role("button", name="Largos Puebla")
+        largos_btn.wait_for(state="visible", timeout=10000)
+        largos_btn.click()
+
+        filtrar_btn = page.get_by_text("Filtrar")
+        filtrar_btn.wait_for(state="visible", timeout=10000)
+        filtrar_btn.click()
+        logger.debug("Filtering...")
         page.wait_for_selector("div", timeout=10000)
         page.wait_for_load_state("networkidle")
 
@@ -470,48 +470,50 @@ def run(playwright: Playwright) -> None:
                             minuto_combo.wait_for(state="visible", timeout=10000)
                             select_max_combobox_option(minuto_combo, label="Minuto")
 
-                            # aceptar_btn = page.get_by_text("Aceptar")
-                            # aceptar_btn.wait_for(state="visible", timeout=10000)
-                            # aceptar_btn.click()
-                            # time.sleep(1)
-                            # confirmar_btn = page.get_by_text("Confirmar")
-                            # confirmar_btn.wait_for(state="visible", timeout=10000)
-                            # confirmar_btn.click()
-                            # time.sleep(2)
-                            # try:
-                            #     # Try first with exact case matching
-                            #     aceptar_final_btn = page.get_by_text("ACEPTAR")
-                            #     if aceptar_final_btn.count() == 0:
-                            #         # Try with case-insensitive matching if exact match fails
-                            #         aceptar_final_btn = page.get_by_text(
-                            #             re.compile("ACEPTAR", re.IGNORECASE)
-                            #         )
-                            #
-                            #     aceptar_final_btn.wait_for(
-                            #         state="visible", timeout=10000
-                            #     )
-                            #     logger.debug("Found final ACEPTAR button, clicking...")
-                            #     aceptar_final_btn.click()
-                            #     time.sleep(1)  # Wait for click to complete
-                            #     logger.info("Confirmed Offer.")
-                            # except Exception as e:
-                            #     logger.error(
-                            #         f"Failed to click final ACEPTAR button: {e}"
-                            #     )
+                            aceptar_btn = page.get_by_text("Aceptar", exact=True)
+                            # aceptar_btn.wait_for(state="visible")
+                            aceptar_btn.click()
+                            time.sleep(1)
+                            confirmar_btn = page.get_by_text("Confirmar")
+                            confirmar_btn.wait_for(state="visible", timeout=5000)
+                            confirmar_btn.click()
+                            time.sleep(3)
+                            try:
+                                aceptar_final_btn = page.get_by_text("ACEPTAR", exact=True)
+                                aceptar_final_btn.wait_for(state="visible", timeout=5000)
+                                print("Is visible:", aceptar_final_btn.is_visible())
+                                aceptar_final_btn.click()
+                                # if aceptar_final_btn.count() == 0:
+                                #     # Try with case-insensitive matching if exact match fails
+                                #     aceptar_final_btn = page.get_by_text(
+                                #         re.compile("ACEPTAR", re.IGNORECASE)
+                                #     )
+                                #
+                                # aceptar_final_btn.wait_for(
+                                #     state="visible", timeout=10000
+                                # )
+                                # logger.debug("Found final ACEPTAR button, clicking...")
+                                # aceptar_final_btn.click()
+                                time.sleep(1)  # Wait for click to complete
+                                logger.info("Confirmed Offer.")
+                            except Exception as e:
+                                logger.error(
+                                    f"Failed to click final ACEPTAR button: {e}"
+                                )
                             # logger.info("Confirmed Offer.")
-                            # try:
-                            #     logger.debug(
-                            #         "Waiting for 'Filtrar' to be available again..."
-                            #     )
-                            #     page.get_by_text("Filtrar", exact=True).wait_for(
-                            #         state="visible", timeout=10000
-                            #     )
-                            #     page.get_by_text("Filtrar", exact=True).click()
-                            #     logger.info("Finished flow, refreshing filter...")
-                            # except Exception as e:
-                            #     logger.exception("Could not click 'Filtrar'")
-                            input("Press enter to close browser...")
-                            break
+                            try:
+                                logger.debug(
+                                    "Waiting for 'Filtrar' to be available again..."
+                                )
+                                page.get_by_text("Filtrar", exact=True).wait_for(
+                                    state="visible", timeout=5000
+                                )
+                                page.get_by_text("Filtrar", exact=True).click()
+                                logger.info("Finished flow, refreshing filter...")
+                            except Exception as e:
+                                logger.exception("Could not click 'Filtrar'")
+                            # input("Press enter to close browser...")
+                            # break
                     except Exception as e:
                         logger.warning(f"Error al procesar bloque {i}: {e}")
                         continue
