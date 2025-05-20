@@ -191,7 +191,7 @@ def select_max_combobox_option(combo, label="") -> tuple[bool, str | None, list 
 
 def run(playwright: Playwright) -> None:
     try:
-        browser = playwright.chromium.launch(headless=False)
+        browser = playwright.chromium.launch(headless=True)
         # if not os.path.exists("storage_state.json"):
         if not os.path.exists(os.path.join(base_dir, "storage_state.json")):
             logger.debug("storage_state doesnt exists")
@@ -327,9 +327,14 @@ def run(playwright: Playwright) -> None:
             .filter(has_text="Principal Ofertas de Viajes")
             .get_by_role("img")
         )
-        listitem_img.wait_for(state="visible", timeout=10000)
-        listitem_img.click(timeout=10000)
-        page.wait_for_load_state("networkidle")
+        try:
+            listitem_img.wait_for(state="visible", timeout=10000)
+            listitem_img.scroll_into_view_if_needed(timeout=5000)
+            listitem_img.click(timeout=10000, force=True)
+            page.wait_for_load_state("networkidle")
+            logger.debug("Clicked Ofertas Viajes")
+        except Exception as e:
+            logger.error(f"Failed to click Ofertas Viajes | {e}")
 
         origenes_btn = page.get_by_role("button", name="Origenes")
         origenes_btn.wait_for(state="visible")
