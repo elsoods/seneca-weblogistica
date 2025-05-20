@@ -15,3 +15,7 @@ codegen.log
 
 recordings/
 weblogistica.service
+
+log/
+
+src/db/offers.db
