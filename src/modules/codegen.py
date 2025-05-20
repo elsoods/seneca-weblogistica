@@ -360,6 +360,7 @@ def run(playwright: Playwright) -> None:
 
         loop_controller = True
         while loop_controller:
+            logger.debug("Entering while loop")
             max_retries = 10
             retry_interval = 1
 
@@ -392,13 +393,19 @@ def run(playwright: Playwright) -> None:
                         oferta_texto = columnas.nth(0).locator('span').inner_text()
                         # logger.debug(f"Found offer ID: {oferta_texto}")
                         fecha_texto = columnas.nth(2).locator('span').inner_text()
-                        # logger.info(f"Oferta: {oferta_texto}, Fecha: {fecha_texto}")
+                        tipo_camion = columnas.nth(6).locator('span.block.rounded-full').inner_text()
+                        logger.debug(f"tipo camion {tipo_camion}")
                         match = re.match(fecha_regex, fecha_texto)
                         if not match:
                             logger.warning(
                                 f"Formato inesperado en fecha: '{fecha_texto}'"
                             )
                             continue  # pasa al siguiente bloque si la fecha está mal formada
+                        if tipo_camion != "Plataforma 3 ejes Neumática":
+                            logger.warning(
+                                f"Tipo de camion incorrecto: '{tipo_camion}'"
+                            )
+                            continue  # pasa al siguiente bloque si el tipo de camion no es correcto
 
                         logger.info("-" * 50)
                         input_button = bloque.locator(".inputdate-class-position")
