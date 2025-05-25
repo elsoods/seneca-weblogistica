@@ -360,6 +360,7 @@ def run(playwright: Playwright) -> None:
             logger.debug("Entering while loop")
             max_retries = 10
             retry_interval = 1
+            camion_flag = False
 
             for trie in range(max_retries):
                 # Localizar todos los bloques que contengan oferta y fecha dentro
@@ -398,10 +399,11 @@ def run(playwright: Playwright) -> None:
                                 f"Formato inesperado en fecha: '{fecha_texto}'"
                             )
                             continue  # pasa al siguiente bloque si la fecha está mal formada
-                        if not re.search(r"2 ejes", tipo_camion, re.IGNORECASE):
+                        if re.search(r"\b2\s+ejes\b", tipo_camion, re.IGNORECASE):
                             logger.warning(
                                 f"Tipo de camion incorrecto: '{tipo_camion}'"
                             )
+                            camion_flag = True
                             continue  # pasa al siguiente bloque si el tipo de camion no es correcto
 
                         logger.info("-" * 50)
@@ -503,6 +505,9 @@ def run(playwright: Playwright) -> None:
                         continue
                 if total_bloques > 0:
                     try:
+                        if camion_flag:
+                            camion_flag = False
+                            continue
                         time.sleep(1)
                         confirmar_btn = page.get_by_text("Confirmar")
                         confirmar_btn.wait_for(state="visible", timeout=5000)
