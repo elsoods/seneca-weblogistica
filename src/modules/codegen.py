@@ -195,13 +195,10 @@ def run(playwright: Playwright) -> None:
         # if not os.path.exists("storage_state.json"):
         if not os.path.exists(os.path.join(base_dir, "storage_state.json")):
             logger.debug("storage_state doesnt exists")
-            context = browser.new_context(
-                record_video_dir=os.path.join(base_dir, "recordings")
-            )
+            context = browser.new_context()
         else:
             context = browser.new_context(
                 storage_state=os.path.join(base_dir, "storage_state.json"),
-                record_video_dir=os.path.join(base_dir, "recordings"),
             )
         page = context.new_page()
         page.goto(
@@ -308,7 +305,7 @@ def run(playwright: Playwright) -> None:
         # Handle Pop-up
         icon_locator = page.locator(".w-3 > .fill-current")
         try:
-            icon_locator.wait_for(state="visible", timeout=30000)
+            icon_locator.wait_for(state="visible", timeout=5000)
             if icon_locator.count() > 0:
                 icon_is_visible = icon_locator.evaluate(
                     "element => element.offsetParent !== null"
