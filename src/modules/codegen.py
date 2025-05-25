@@ -401,7 +401,7 @@ def run(playwright: Playwright) -> None:
                                 f"Formato inesperado en fecha: '{fecha_texto}'"
                             )
                             continue  # pasa al siguiente bloque si la fecha está mal formada
-                        if tipo_camion != "Plataforma 3 ejes Neumática":
+                        if not re.search(r"2 ejes", tipo_camion, re.IGNORECASE):
                             logger.warning(
                                 f"Tipo de camion incorrecto: '{tipo_camion}'"
                             )
