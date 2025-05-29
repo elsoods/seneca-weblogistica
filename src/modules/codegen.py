@@ -622,7 +622,7 @@ def insert_offer_to_db(diaobj: OfferData) -> None:
     c.execute("""
         CREATE TABLE IF NOT EXISTS offers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            offer_id TEXT,
+            offer_id TEXT UNIQUE,
             origen TEXT,
             fecha TEXT,
             dia TEXT,
@@ -635,7 +635,7 @@ def insert_offer_to_db(diaobj: OfferData) -> None:
         )
     """)
     c.execute(
-        "INSERT INTO offers (offer_id, origen, fecha, dia, hora_inicio, hora_fin, hora_seleccionada, hora_combo, minuto_combo, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO offers (offer_id, origen, fecha, dia, hora_inicio, hora_fin, hora_seleccionada, hora_combo, minuto_combo, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (diaobj.offer_id, diaobj.origen, diaobj.fecha, diaobj.dia, diaobj.hora_inicio, diaobj.hora_fin, diaobj.hora_seleccionada, json.dumps(diaobj.hora_combo), json.dumps(diaobj.minuto_combo), get_mexico_time()),
     )
     conn.commit()
